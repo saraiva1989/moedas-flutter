@@ -1,17 +1,22 @@
 import 'package:flutter/material.dart';
+import 'package:gradient_text/gradient_text.dart';
 import 'package:http/http.dart' as http;
 import 'dart:async';
 import 'dart:convert';
 
 const _urlAPIMoeda = "https://api.hgbrasil.com/finance?key=aff43f49";
+Map<String, dynamic> _listamoedas = Map<String, dynamic>();
 void main() async {
   runApp(MaterialApp(home: Home()));
-  print(await getMoedas());
 }
 
 Future<Map> getMoedas() async {
-  http.Response retorno = await http.get(_urlAPIMoeda);
-  return json.decode(retorno.body)["results"]["currencies"];
+  //biblioteca terceiro - http: ^0.12.0+4
+  http.Response response = await http.get(_urlAPIMoeda);
+  Map<String, dynamic> retorno = json.decode(
+          response.body.replaceAll("\"source\":\"BRL\"\,", ""))["results"]
+      ["currencies"];
+  return retorno;
 }
 
 class Home extends StatefulWidget {
@@ -24,97 +29,89 @@ class _HomeState extends State<Home> {
   double euro;
 
   @override
+  void initState() {
+    super.initState();
+    getMoedas().then((data) {
+      setState(() {
+        _listamoedas = data;
+      });
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
     return Scaffold(
-        backgroundColor: Colors.deepPurple,
-        appBar: AppBar(
-          title: Text("Moedas!"),
-          backgroundColor: Colors.purple,
-          centerTitle: true,
-        ),
-        body: GestureDetector(
-            onTap: () {
-              FocusScope.of(context).requestFocus(new FocusNode());
-            },
-            child: SingleChildScrollView(
-              padding: EdgeInsets.fromLTRB(15, 20, 15, 0),
-              child: FutureBuilder(
-                builder: (context, snapshot) {
-                  switch (snapshot.connectionState) {
-                    case ConnectionState.none:
-                    case ConnectionState.waiting:
-                      return Center(
-                        child: Text(
-                          "Carregando Dados",
-                          style: TextStyle(color: Colors.white, fontSize: 20),
-                        ),
-                      );
-                    case ConnectionState.done:
-                      dolar = snapshot.data["USD"]["buy"];
-                      euro = snapshot.data["EUR"]["buy"];
-                      return Center(
-                        child: Column(
-                          crossAxisAlignment: CrossAxisAlignment.stretch,
-                          children: <Widget>[
-                            Text("valor Dolar = $dolar",
-                                style: TextStyle(
-                                    color: Colors.white, fontSize: 20)),
-                            Divider(),
-                            Text("valor Euro = $euro",
-                                style: TextStyle(
-                                    color: Colors.white, fontSize: 20)),
-                            Divider(),
-                            MeuTextField("Dolar", "US\$"),
-                            Divider(),
-                            MeuTextField("Dolar", "€"),
-                            Container(
-                              height: 40,
-                              child: RaisedButton(
-                                  child: Text(
-                                    "Atualizar",
-                                    style: TextStyle(
-                                        color: Colors.white, fontSize: 20),
-                                  ),
-                                  color: Colors.purple,
-                                  onPressed: () {
-                                    setState(() {
-                                      getMoedas();
-                                    });
-                                  }),
-                            )
-                          ],
-                        ),
-
-                        // child: Text(
-                        //   "valor dolar = $dolar | valor euro = $euro",
-                        //   style: TextStyle(color: Colors.white, fontSize: 20),
-                        // ),
-                      );
-
-                      break;
-                    default:
-                      if (snapshot.error) {
-                        return Center(
-                          child: Text(
-                            "Ocorreu algum erro! Tente novamente mais tarde",
-                            style: TextStyle(color: Colors.white, fontSize: 20),
-                          ),
-                        );
-                      }
-                  }
-                },
-                future: getMoedas(),
+        backgroundColor: Color.fromRGBO(1, 16, 42, 1),
+        // appBar: AppBar(
+        //   title: Text("Moedas!"),
+        //   backgroundColor: Color.fromRGBO(1, 16, 42, 1),
+        //   centerTitle: true,
+        // ),
+        body: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: <Widget>[
+            Container(
+              alignment: Alignment.topLeft,
+              padding: EdgeInsets.fromLTRB(15, 50, 0, 0),
+              height: 100,
+              child: Text(
+                "Veja a cotação do dia",
+                style: TextStyle(fontSize: 30, color: Colors.white),
               ),
-            )));
+            ),
+            Container(
+                height: MediaQuery.of(context).size.height - 100,
+                child: RefreshIndicator(
+                  onRefresh: () async {
+                    getMoedas().then((data) {
+                      setState(() {
+                        _listamoedas = data;
+                      });
+                    });
+                  },
+                  child: GridView.builder(
+                    itemCount: _listamoedas.length,
+                    gridDelegate: new SliverGridDelegateWithFixedCrossAxisCount(
+                        crossAxisCount: 2),
+                    itemBuilder: (context, index) {
+                      return _moedaCard(context, index);
+                    },
+                  ),
+                ))
+          ],
+        ));
   }
 }
 
-Widget MeuTextField(String label, String prefix) {
-  return TextField(
-      decoration: InputDecoration(
-          labelText: label,
-          labelStyle: TextStyle(color: Colors.white),
-          border: OutlineInputBorder(),
-          prefixText: prefix),
-      style: TextStyle(color: Colors.white, fontSize: 20));
+Widget _moedaCard(BuildContext context, int index) {
+  String moeda = _listamoedas.keys.elementAt(index);
+  var valor = _listamoedas.values.elementAt(index)["buy"];
+
+  return Card(
+    color: Color.fromRGBO(26, 40, 65, 1),
+    margin: EdgeInsets.fromLTRB(10, 10, 10, 10),
+    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20.0)),
+    elevation: 15,
+    child: Column(
+      mainAxisAlignment: MainAxisAlignment.center,
+      children: <Widget>[
+        //biblioteca terceiro - gradient_text: ^1.0.2
+        GradientText("$moeda",
+            gradient: LinearGradient(colors: [
+              Colors.blue[100],
+              Colors.blueAccent[200],
+              Colors.lightBlue[300]
+            ]),
+            style: TextStyle(fontSize: 30),
+            textAlign: TextAlign.center),
+        Divider(
+          color: Color.fromRGBO(26, 40, 65, 1),
+        ),
+        Text(
+          "Valor: R\$ $valor",
+          style: TextStyle(color: Colors.white, fontSize: 15),
+        )
+      ],
+    ),
+  );
 }
