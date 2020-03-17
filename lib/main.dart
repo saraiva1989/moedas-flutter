@@ -5,18 +5,10 @@ import 'dart:async';
 import 'dart:convert';
 
 const _urlAPIMoeda = "https://api.hgbrasil.com/finance?key=aff43f49";
+
 Map<String, dynamic> _listamoedas = Map<String, dynamic>();
 void main() async {
   runApp(MaterialApp(home: Home()));
-}
-
-Future<Map> getMoedas() async {
-  //biblioteca terceiro - http: ^0.12.0+4
-  http.Response response = await http.get(_urlAPIMoeda);
-  Map<String, dynamic> retorno = json.decode(
-          response.body.replaceAll("\"source\":\"BRL\"\,", ""))["results"]
-      ["currencies"];
-  return retorno;
 }
 
 class Home extends StatefulWidget {
@@ -28,14 +20,22 @@ class _HomeState extends State<Home> {
   double dolar;
   double euro;
 
+  Future<Null> getMoedas() async {
+    //biblioteca terceiro - http: ^0.12.0+4
+    http.Response response = await http.get(_urlAPIMoeda);
+    Map<String, dynamic> retorno = json.decode(
+            response.body.replaceAll("\"source\":\"BRL\"\,", ""))["results"]
+        ["currencies"];
+    setState(() {
+      _listamoedas = retorno;
+    });
+    //return retorno;
+  }
+
   @override
   void initState() {
     super.initState();
-    getMoedas().then((data) {
-      setState(() {
-        _listamoedas = data;
-      });
-    });
+    getMoedas();
   }
 
   @override
@@ -62,13 +62,7 @@ class _HomeState extends State<Home> {
             Container(
                 height: MediaQuery.of(context).size.height - 100,
                 child: RefreshIndicator(
-                  onRefresh: () async {
-                    getMoedas().then((data) {
-                      setState(() {
-                        _listamoedas = data;
-                      });
-                    });
-                  },
+                  onRefresh: getMoedas,
                   child: GridView.builder(
                     itemCount: _listamoedas.length,
                     gridDelegate: new SliverGridDelegateWithFixedCrossAxisCount(
