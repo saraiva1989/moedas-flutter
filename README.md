@@ -1,6 +1,6 @@
 # conversor_moedas
 
-A new Flutter project.
+Aplicativo feito em flutter que traz o valor atual das moedas (Dolar, Euro, etc).
 
 ## Getting Started
 
